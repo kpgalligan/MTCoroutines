@@ -1,147 +1,67 @@
 package sample
 
-import co.touchlab.stately.collections.frozenHashMap
 import co.touchlab.stately.ensureNeverFrozen
 import co.touchlab.stately.isFrozen
 import kotlinx.coroutines.*
 import kotlin.coroutines.CoroutineContext
 import kotlin.native.concurrent.SharedImmutable
-import kotlin.time.ExperimentalTime
-import kotlin.time.measureTime
-
-expect class Sample() {
-    fun checkMe(): Int
-}
-
-expect object Platform {
-    val name: String
-}
-
-fun hello(): String = "Hello from ${Platform.name}"
-
-class Proxy {
-    fun proxyHello() = hello()
-}
-
-fun main() {
-    println(hello())
-}
-
-data class HeyResult(val s:String, val i:Int)
 
 @SharedImmutable
-expect val myBackgroundDispatcher:CoroutineDispatcher
+expect val workerDispatcher: CoroutineDispatcher
 
-@SharedImmutable
-expect val stateDispatcher:CoroutineDispatcher
 expect fun Throwable.printMe()
 
-class GoModel(
-)  {
-
-    class ModelScope(private val mainContext: CoroutineContext) : CoroutineScope {
-        internal val job = Job()
-        private val exceptionHandler = CoroutineExceptionHandler { _, throwable ->
-            println("error $throwable")
-            throwable.printMe()
-        }
-
-        override val coroutineContext: CoroutineContext
-            get() = mainContext + job + exceptionHandler
+class DbModel(private val dbId: Int) {
+    fun showDbStuff() = mainScope.launch {
+        val sd = loadDbInfo(dbId)
+        println(sd)
     }
 
+    private suspend fun loadDbInfo(id: Int) =
+        withContext(workerDispatcher) {
+            DB.find(id)
+        }
+
+    init {
+        ensureNeverFrozen()
+    }
+}
+
+
+val mainScope = ModelScope(Dispatchers.Main)
+
+object DB {
+    fun find(id: Int): SomeData = SomeData("id $id", id)
+}
+
+class GoModel(
+) {
     private val scope = ModelScope(Dispatchers.Main)
+
     init {
         ensureNeverFrozen()
     }
 
-    @UseExperimental(ExperimentalTime::class)
-    fun doStuffBlocking() {
-        val imap = BlockingMap<String, SomeData>()
-        val duration = measureTime {
-            repeat(100_000) {
-                imap.put("ttt $it", SomeData("jjj $it"))
-            }
-
-            /*repeat(100_000) {
-                val hi = get("ttt $it")
-                if (it % 10_000 == 0) {
-                    println("val $hi, isFrozen ${hi.isFrozen()}")
-                }
-            }*/
+    suspend fun printStuffBg() {
+        val someData = SomeData("Hello 🐶🐶", 2)
+        withContext(workerDispatcher) {
+            println(someData)
         }
-
-        println("Blocking duation ${duration} count ${imap.size()}")
-
-        imap.clear()
-
-        val coroutineBatchduration = measureTime {
-            repeat(100) {outerLoop ->
-                val dataMap = mutableMapOf<String, SomeData>()
-                repeat(1000){
-                    val index = (outerLoop * 1000) + it
-                    dataMap.put("ttt $index", SomeData("jjj $index"))
-                }
-                imap.putMap(dataMap)
-            }
-
-            /*repeat(100_000) {
-                val hi = get("ttt $it")
-                if (it % 10_000 == 0) {
-                    println("val $hi, isFrozen ${hi.isFrozen()}")
-                }
-            }*/
-        }
-
-        println("Blocking batch duation ${coroutineBatchduration} count ${imap.size()}")
     }
 
-    @UseExperimental(ExperimentalTime::class)
-    fun doStuff(block:(String)->Unit) = scope.launch {
+    suspend fun printStuffForeground() {
+        val someData = SomeData("Hello 🐶🐶", 2)
 
-        val imap = IsoMap<String, SomeData>(createState { mutableMapOf<String, SomeData>() })
-        val duration = measureTime {
-            repeat(100_000) {
-                imap.put("ttt $it", SomeData("jjj $it"))
-            }
+        val someMoreData = withContext(workerDispatcher) {
+            SomeData("${someData.s}, Dogs!", someData.i + 1)
         }
 
-        println("Coroutine duation ${duration} count ${imap.size()}")
+        println(someMoreData)
+        println("I am frozen? ${someMoreData.isFrozen()}")
+    }
 
-        imap.clear()
-
-        val coroutineBatchduration = measureTime {
-            repeat(100) {outerLoop ->
-                val dataMap = mutableMapOf<String, SomeData>()
-                repeat(1000){
-                    val index = (outerLoop * 1000) + it
-                    dataMap.put("ttt $index", SomeData("jjj $index"))
-                }
-                imap.putMap(dataMap)
-            }
-        }
-
-        println("Coroutine batch duation ${coroutineBatchduration} count ${imap.size()}")
-
-        imap.clear()
-
-        val m = mutableMapOf<String, SomeData>()
-        val mutableDuration = measureTime {
-            repeat(100_000) {
-                m.put("ttt $it", SomeData("jjj $it"))
-            }
-        }
-
-        println("Mutable duation ${mutableDuration} count ${m.size}")
-
-        val fm = frozenHashMap<String, SomeData>()
-        val frozenDuration = measureTime {
-            repeat(100_000) {
-                fm.put("ttt $it", SomeData("jjj $it"))
-            }
-        }
-
-        println("Frozen duation ${frozenDuration} count ${fm.size}")
+    fun forIOS() = scope.launch {
+        printStuffForeground()
     }
 
     fun showError(t: Throwable) {
@@ -152,3 +72,16 @@ class GoModel(
         scope.job.cancel()
     }
 }
+
+class ModelScope(private val mainContext: CoroutineContext) : CoroutineScope {
+    internal val job = Job()
+    private val exceptionHandler = CoroutineExceptionHandler { _, throwable ->
+        println("error $throwable")
+        throwable.printMe()
+    }
+
+    override val coroutineContext: CoroutineContext
+        get() = mainContext + job + exceptionHandler
+}
+
+data class SomeData(val s: String, val i: Int)

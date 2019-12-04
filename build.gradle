@@ -1,7 +1,7 @@
 buildscript {
     ext.versions = [
             'xcode'                : '0.1.5',
-            'kotlin'               : '1.3.60'
+            'kotlin'               : '1.3.61'
     ]
     repositories {
         mavenLocal()

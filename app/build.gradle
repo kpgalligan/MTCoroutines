@@ -4,7 +4,7 @@ apply plugin: 'org.jetbrains.kotlin.multiplatform'
 kotlin {
     // This is for iPhone emulator
     // Switch here to iosArm64 (or iosArm32) to build library for iPhone device
-    iosArm64("ios") {
+    iosX64("ios") {
         binaries {
             framework()
         }
@@ -15,7 +15,7 @@ kotlin {
                 implementation kotlin('stdlib-common')
                 implementation "co.touchlab:stately:0.9.4"
                 implementation "co.touchlab:stately-collections:0.9.4"
-                implementation "org.jetbrains.kotlinx:kotlinx-coroutines-core-common:1.3.2-native-mt-1"
+                implementation "org.jetbrains.kotlinx:kotlinx-coroutines-core-common:1.3.2-native-mt-SNAPSHOT"
             }
         }
         commonTest {
@@ -26,7 +26,7 @@ kotlin {
         }
         iosMain {
             dependencies {
-                implementation "org.jetbrains.kotlinx:kotlinx-coroutines-core-native:1.3.2-native-mt-1"
+                implementation "org.jetbrains.kotlinx:kotlinx-coroutines-core-native:1.3.2-native-mt-SNAPSHOT"
             }
         }
         iosTest {

@@ -7,19 +7,8 @@ import kotlin.native.concurrent.SharedImmutable
 import kotlin.native.concurrent.ensureNeverFrozen
 import kotlin.native.concurrent.isFrozen
 
-actual class Sample {
-    actual fun checkMe() = 7
-}
-
-actual object Platform {
-    actual val name: String = "iOS"
-}
-
 @SharedImmutable
-actual val myBackgroundDispatcher: CoroutineDispatcher = newSingleThreadContext("mr background")
-
-@SharedImmutable
-actual val stateDispatcher: CoroutineDispatcher = newSingleThreadContext("state")
+actual val workerDispatcher: CoroutineDispatcher = newSingleThreadContext("mr background")
 
 actual fun Throwable.printMe() {
     printStackTrace()
